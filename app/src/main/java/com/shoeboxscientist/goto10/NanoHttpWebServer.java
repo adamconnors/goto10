@@ -1,15 +1,12 @@
 package com.shoeboxscientist.goto10;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
+import org.json.JSONException;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 
 import fi.iki.elonen.NanoHTTPD;
 
@@ -21,9 +18,9 @@ public class NanoHttpWebServer extends NanoHTTPD {
 
     private DataSource mSource;
     private LoggingOutput mLog;
-    private CommandExecutor mExec;
+    private MessageHandler mExec;
 
-    public NanoHttpWebServer(int port, DataSource source, LoggingOutput log, CommandExecutor exec) {
+    public NanoHttpWebServer(int port, DataSource source, LoggingOutput log, MessageHandler exec) {
         super(port);
         mSource = source;
         mLog = log;
@@ -81,32 +78,17 @@ public class NanoHttpWebServer extends NanoHTTPD {
             path = "/index.html";
         }
 
-        // Intercept commands and execute them.
-        if (path.equals("/command")) {
-            try {
-                String cmd = parsePost(session);
-                mExec.execute(cmd);
-                return new Response(Response.Status.OK, MIME_HTML, "OK");
-            } catch (IOException e) {
-                return new Response(Response.Status.OK, MIME_HTML, "ERR:" + e.getMessage());
-            } catch (ResponseException re) {
-                return new Response(Response.Status.OK, MIME_HTML, "ERR:" + re.getMessage());
-            } catch (CommandException ce) {
-                return new Response(Response.Status.OK, MIME_HTML, "ERR:" + ce.getMessage());
-            }
-        }
-
         String mime = MIME_HTML;
         if (path.endsWith("css")) {
             mime = MIME_CSS;
         }
 
         try {
-            return new NanoHTTPD.Response(Response.Status.OK, mime,
+            return newChunkedResponse(Response.Status.OK, mime,
                     mSource.getInputStreamForPath(path));
         } catch (IOException e) {
             mLog.log("Couldn't read file: " + e.getMessage());
-            return new Response(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "ERR:" + e.getMessage());
+            return newFixedLengthResponse("ERR:" + e.getMessage());
         }
     }
 
@@ -117,12 +99,4 @@ public class NanoHttpWebServer extends NanoHTTPD {
     public static interface LoggingOutput {
         void log(String text);
     }
-
-    public static interface CommandExecutor {
-        void execute(String json) throws CommandException;
-    }
-
-    public static class CommandException extends Exception {
-    }
-
 }

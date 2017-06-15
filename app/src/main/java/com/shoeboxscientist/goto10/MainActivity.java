@@ -1,19 +1,20 @@
 package com.shoeboxscientist.goto10;
 
 import android.graphics.Color;
+import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.android.things.contrib.driver.button.Button;
+import com.google.android.things.contrib.driver.rainbowhat.RainbowHat;
+import com.shoeboxscientist.goto10.AndroidInstanceClasses.AndroidContentStore;
+import com.shoeboxscientist.goto10.handlers.RainbowHatConnector;
 
-import java.io.BufferedReader;
+import org.json.JSONException;
+
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -21,10 +22,12 @@ public class MainActivity extends AppCompatActivity {
     private static final int PORT = 8080;
     private RainbowHatConnector mRainbowHat;
     private NanoHttpWebServer mServer;
+    private NanoHttpdWebSocketServer mSocketServer;
 
     private NanoHttpWebServer.DataSource mSource;
     private NanoHttpWebServer.LoggingOutput mLog;
-    private NanoHttpWebServer.CommandExecutor mExec;
+    private MessageHandler mExec;
+    private ContentStore mContentStore;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,7 +38,7 @@ public class MainActivity extends AppCompatActivity {
         // Set up the rainbow hat
         try {
             mRainbowHat = new RainbowHatConnector();
-            mRainbowHat.init();
+            mContentStore = new AndroidContentStore();
             mRainbowHat.updateDisplay("REDY");
             mRainbowHat.updateLedStrip(new int[] { Color.BLACK, Color.BLACK, Color.BLACK,
                     Color.BLACK, Color.BLACK, Color.BLACK, Color.BLACK});
@@ -47,14 +50,17 @@ public class MainActivity extends AppCompatActivity {
 
         mSource = new DataSource();
         mLog = new LoggingOutput();
-        mExec = new CommandExecutor();
+        mExec = new MessageHandler(mContentStore, mRainbowHat);
 
         mServer = new NanoHttpWebServer(PORT, mSource, mLog, mExec);
+        mSocketServer = new NanoHttpdWebSocketServer(8081, mLog, mExec);
+        mExec.setSocketServer(mSocketServer);
 
         try {
+            mSocketServer.start(0);
             mServer.start();
         } catch(IOException e) {
-            Log.e(TAG, "Couldn't start Http Server", e);
+            Log.e(TAG, "Couldn't start servers: ", e);
             finish();
             return;
         }
@@ -65,7 +71,12 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        mRainbowHat.cleanup();
+
+        try {
+            mRainbowHat.cleanup();
+        } catch (IOException e) {
+            Log.e(TAG, "Couldn't clean up RainbowHat", e);
+        }
 
         if (mServer != null) {
             mServer.stop();
@@ -83,38 +94,6 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void log(String text) {
             Log.d(TAG, text);
-        }
-    }
-
-    private class CommandExecutor implements NanoHttpWebServer.CommandExecutor {
-
-        @Override
-        public void execute(String json) throws NanoHttpWebServer.CommandException {
-            Log.d(TAG, "Executing json: " + json);
-
-            JsonObject obj = new JsonParser().parse(json).getAsJsonObject();
-            JsonElement cls = obj.get("class");
-            JsonObject payload = obj.get("payload").getAsJsonObject();
-
-            // TODO: Handle different payloads properly & import this into a class properly.
-            String display = asString(payload.get("display"));
-            String ledstrip = asString(payload.get("ledstrip"));
-
-            try {
-                if (display != null) {
-                    mRainbowHat.updateDisplay(display);
-                }
-
-                if (ledstrip != null) {
-                    mRainbowHat.updateLedStrip(Integer.parseInt(ledstrip));
-                }
-            } catch (IOException e) {
-                Log.e(TAG, "Couldn't update hat state.", e);
-            }
-        }
-
-        private String asString(JsonElement e) {
-            return (e == null) ? null : e.getAsString();
         }
     }
 }
