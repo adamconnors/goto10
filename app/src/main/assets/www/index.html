@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>GOTO10 - A ridiculously easy way to programme Android Things!</title>
+    <link rel="stylesheet" type="text/css" href="/index.css" media="screen" />
+</head>
+    <table width="100%">
+        <tr>
+            <td width="60%"><div id="editor">setdisplay("HLLO");</div></td>
+            <td wdith="40%"><div id="console"></div></td>
+        </tr>
+    </table>
+
+    <table>
+        <tr>
+            <td width="0%">
+                </form>
+                  <input type="button" value="Execute (Alt-x) !" onclick="run()"/>
+                  <input type="button" value="Clear console (Alt-c)" onclick="clearconsole()"/>
+                </form>
+            </td>
+            <td>
+                <b>Functions</b><br/>
+                setdisplay('display') --> update the digital display<br/>
+                setledstrip(0 - 7) --> set led strip position<br/>
+                window.onbuttonpressed = function(id, pressed) {...} --> event when button pressed.<br/>
+            </td>
+        </tr>
+    </table>
+
+    <script src="/ace-builds/src-noconflict/ace.js" type="text/javascript" charset="utf-8"></script>
+    <script src="/ace-builds/src-noconflict/ext-language_tools.js"></script>
+    <script src="goto10.js"></script>
+    <script src="rainbowhat.js"></script>
+
+    <!-- Set up the editor -->
+    <!-- All other event handlers, etc are in goto10.js -->
+    <script>
+        var editor = ace.edit("editor");
+        editor.setTheme("ace/theme/monokai");
+
+        editor.setOptions({
+            enableBasicAutocompletion: true,
+            enableSnippets: true,
+            enableLiveAutocompletion: false
+        });
+
+
+        editor.$blockScrolling = Infinity;
+        editor.getSession().setMode("ace/mode/javascript");
+    </script>
+    </body>
+</html>
