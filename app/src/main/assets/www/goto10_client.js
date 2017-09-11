@@ -1,3 +1,6 @@
+/*
+ * --- Websocket connection to server ---
+ */
 var cons = document.getElementById("console");
 var ws = new WebSocket("ws://" + window.location.hostname + ":8081");
 
@@ -5,19 +8,20 @@ ws.onclose = function() {
   console.log("Websocket closed.");
 };
 
-// Let us open a web socket
 ws.onopen = function() {
   console.log("Websocket open.");
 
   // TODO: If an onload ever comes for any other reason we'll screw things up doing this...
   sendCommandToServer('load', '', '');
 };
+// --------------------------------------
 
-// Register shortcut key handler.
+/*
+ * --- Event handlers for shortcut keys ---
+ */
 document.addEventListener('keydown', onKeyDownShortcutHandler, false);
 document.addEventListener('keyup', onKeyUpShortcutHandler, false);
 
-// Short cut key handler.
 function onKeyDownShortcutHandler(e) {
 
     // Nasty hack to stop shortcut key writing into the editor window.
@@ -43,25 +47,27 @@ function onKeyUpShortcutHandler(e) {
   }
 }
 
-// Evaluates the script in response to hitting the button or CMD-x
+/**
+ * --- Main Actions ---
+ */
+// Evaluates the script in response to hitting the button or Alt-x
 function run() {
     var code = editor.getValue();
-    save(code);
-    eval(code);
+    save(code, true);
+
+    // Deprecated. Used to do this to run locally. Not everything is run on the server.
+    // eval(code);
+}
+
+// Saves the script and then runs it on the server
+function runremote() {
+    var code = editor.getValue();
+    save(code, true);
 }
 
 // Clears the onscreen console
 function clearconsole() {
     document.getElementById('console').innerHTML='';
-}
-
-function sleep(ms) {
-   console.warn("Nasty sleep implementation for learning only, use setTimeout instead.");
-   var start = new Date().getTime();
-   var end = start;
-   while(end < start + ms) {
-     end = new Date().getTime();
-  }
 }
 
 // Listeners to show log messages onscreen.
@@ -79,19 +85,19 @@ window.onerror=function(msg, url, linenumber) {
         + "Error line: " + linenumber + " " + msg + "</div>";
 }
 
-// Send code to be saved on the server.
-function save(data) {
-  var json = { 'typ': 'save', 'payload': data };
-  console.log("saving...");
-  ws.send(JSON.stringify(json));
-}
-
 // Send a bundle of JSON to the server to execute commands on the device.
 function sendCommandToServer(typ, cls, payload) {
   var json = { 'typ': typ, 'cls': cls, 'payload': payload }
   var jsonString = JSON.stringify(json);
   console.log("sending request: " + jsonString);
   ws.send(jsonString);
+}
+
+// Send code to be saved on the server.
+function save(data, andexecute) {
+  var json = { 'typ': (andexecute) ? 'execute' : 'save', 'payload': data };
+  console.log("saving... " + ((andexecute) ? " and running!" : ""));
+  ws.send(JSON.stringify(json));
 }
 
 // Callback for receiving events from the server.
@@ -104,8 +110,7 @@ ws.onmessage = function (evt) {
      if (script != null) {
        editor.setValue(script);
      }
-  } else if (json.typ == 'cmd') {
-     // TODO: Handle other kinds of peripheral events based on cls.
-     onButtonEvent(json.payload);
+  } else if (json.typ = 'log') {
+     console.log("JS Message: " + json.payload);
   }
 };

@@ -9,6 +9,7 @@ import com.google.android.things.contrib.driver.button.Button;
 import com.google.android.things.contrib.driver.ht16k33.AlphanumericDisplay;
 import com.google.android.things.contrib.driver.pwmspeaker.Speaker;
 import com.google.android.things.contrib.driver.rainbowhat.RainbowHat;
+import com.google.android.things.pio.PeripheralManagerService;
 import com.shoeboxscientist.goto10.CommandException;
 
 import org.json.JSONException;
@@ -19,15 +20,11 @@ public class RainbowHatConnector extends AbstractRainbowHatConnector {
 
 
     private RainbowHat mHat = new RainbowHat();
-    private AlphanumericDisplay mDisplay;
-    private Apa102 mLedstrip;
     private Button mButtonA;
     private Button mButtonB;
     private Button mButtonC;
 
     private int[] mRainbow = new int[7];
-
-    private Speaker mSpeaker;
 
     private static final int BRIGHTNESS = 1;
 
@@ -39,15 +36,11 @@ public class RainbowHatConnector extends AbstractRainbowHatConnector {
             mRainbow[i] = Color.HSVToColor(255, hsv);
         }
 
+        // Connect buttons.
+        initHat();
+    }
 
-        // Connect to the peripherals.
-        mDisplay = mHat.openDisplay();
-        mLedstrip = mHat.openLedStrip();
-        mLedstrip.setBrightness(BRIGHTNESS);
-
-        // PWM speaker
-        mSpeaker = mHat.openPiezo();
-
+    private void initHat() throws IOException {
         // Buttons
         mButtonA = connectButton(RainbowHat.BUTTON_A);
         mButtonB = connectButton(RainbowHat.BUTTON_B);
@@ -66,26 +59,39 @@ public class RainbowHatConnector extends AbstractRainbowHatConnector {
         return b;
     }
 
+    @Override
     public void cleanup() throws IOException {
-        mDisplay.close();
-        mLedstrip.close();
-        mSpeaker.close();
+        // Don't think clean up is needed now I open/close for each call.
     }
 
     public synchronized void playNoise(int v) throws IOException {
-        mSpeaker.play(v);
+        Speaker speaker = RainbowHat.openPiezo();
+        speaker.play(440);
+        speaker.close();
     }
 
     public synchronized void updateDisplay(String value) throws IOException {
-        mDisplay.display(value);
+        AlphanumericDisplay display = mHat.openDisplay();
+        display.display(value);
+        display.setEnabled(true);
+        display.close();
     }
 
-    public void updateLedStrip(int n) throws IOException {
+    public synchronized void updateLedStrip(int n) throws IOException {
         updateLedStrip(getColours(n));
     }
 
     public synchronized void updateLedStrip(int[] colours) throws IOException {
-        mLedstrip.write(colours);
+        try {
+            Apa102 ledstrip = RainbowHat.openLedStrip();
+            ledstrip.setBrightness(BRIGHTNESS);
+            ledstrip.write(colours);
+            // Do It Twice since something w/ Android Things does not work consistently.
+            ledstrip.write(colours);
+            ledstrip.close();
+        } catch (IOException e) {
+            throw new RuntimeException("Error initializing apa102 rainbow", e);
+        }
     }
 
     // Converts the val into a position on the rainbow. The colors array is just to build up the

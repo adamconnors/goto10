@@ -92,8 +92,9 @@ public class NanoHttpWebServer extends NanoHTTPD {
         }
     }
 
-    public static interface DataSource {
+    public interface DataSource {
         InputStream getInputStreamForPath(String path) throws IOException;
+        String getStringForPath(String path) throws IOException;
     }
 
     public static interface LoggingOutput {

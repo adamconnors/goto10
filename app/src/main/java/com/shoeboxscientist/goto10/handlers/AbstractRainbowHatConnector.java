@@ -27,9 +27,9 @@ public abstract class AbstractRainbowHatConnector {
     public static final String ID_DISPLAY = "display";
     public static final String ID_LEDSTRIP = "ledstrip";
 
-    protected MessageHandler mPeripheralListener;
+    protected PeripheralListener mPeripheralListener;
 
-    public void setPeripheralListener(MessageHandler listener) {
+    public void setPeripheralListener(PeripheralListener listener) {
         mPeripheralListener = listener;
     }
 
@@ -74,5 +74,12 @@ public abstract class AbstractRainbowHatConnector {
         msg.addProperty("id", id);
         msg.addProperty("pressed", pressed);
         return msg;
+    }
+
+    /**
+     * Interface for receiving callbacks from the hat
+     */
+    public interface PeripheralListener {
+        void onPeripheralEvent(String cls, JsonObject json) throws CommandException, IOException, JSONException;
     }
 }

@@ -6,8 +6,8 @@
 </head>
     <table width="100%">
         <tr>
-            <td width="60%"><div id="editor">setdisplay("HLLO");</div></td>
-            <td wdith="40%"><div id="console"></div></td>
+            <td width="60%"><div id="editor">thing.setDisplay('hllo');</div></td>
+            <td width="40%"><div id="console"></div></td>
         </tr>
     </table>
 
@@ -15,26 +15,25 @@
         <tr>
             <td width="0%">
                 </form>
-                  <input type="button" value="Execute (Alt-x) !" onclick="run()"/>
-                  <input type="button" value="Clear console (Alt-c)" onclick="clearconsole()"/>
+                <input type="button" value="Execute on Device (Alt-x)" onclick="run()"/>
+                  <input type="button" value="Clear console (Alt-c)" onclick="clearconsole()"/><br/>
                 </form>
             </td>
             <td>
                 <b>Functions</b><br/>
-                setdisplay('display') --> update the digital display<br/>
-                setledstrip(0 - 7) --> set led strip position<br/>
-                window.onbuttonpressed = function(id, pressed) {...} --> event when button pressed.<br/>
+                thing.setDisplay('display') --> update the digital display<br/>
+                thing.setLedStrip(0 - 7) --> set led strip position<br/>
+                thing.sleep(ms) --> pause for ms milliseconds<br/>
+                thing.setButtonListener(some-function) --> <a href="javascript:addbuttonlistenersnippet();">call event when button is pressed.</a><br/>
             </td>
         </tr>
     </table>
 
     <script src="/src-noconflict/ace.js" type="text/javascript" charset="utf-8"></script>
     <script src="/src-noconflict/ext-language_tools.js"></script>
-    <script src="goto10.js"></script>
-    <script src="rainbowhat.js"></script>
+    <script src="goto10_client.js"></script>
 
     <!-- Set up the editor -->
-    <!-- All other event handlers, etc are in goto10.js -->
     <script>
         var editor = ace.edit("editor");
         editor.setTheme("ace/theme/monokai");
@@ -48,6 +47,18 @@
 
         editor.$blockScrolling = Infinity;
         editor.getSession().setMode("ace/mode/javascript");
+
+
+        function addbuttonlistenersnippet() {
+            var snippet = "function onButtonClick(id, pressed) {\n"
+                        + "  thing.setDisplay(id);\n"
+                        + "}\n\n"
+                        + "thing.setButtonListener(onButtonClick);"
+
+            editor.session.insert(editor.getCursorPosition(), snippet);
+
+        }
+
     </script>
     </body>
 </html>

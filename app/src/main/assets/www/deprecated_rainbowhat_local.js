@@ -1,4 +1,8 @@
-// TODO: May need to namespace this at some point.
+/**
+ * @Deprecated
+ * Local script for sending commands to server to execute peripheral events
+ * This is now all executed on the serfver.
+ */
 function setdisplay(txt) {
   sendCommandToServer('cmd', 'rh', { display: txt } );
 }

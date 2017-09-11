@@ -1,5 +1,9 @@
 package com.shoeboxscientist.goto10;
 
+import static com.shoeboxscientist.goto10.NanoHttpWebServer.LoggingOutput;
+import static com.shoeboxscientist.goto10.NanoHttpWebServer.DataSource;
+
+import android.renderscript.Script;
 import android.util.Log;
 
 import com.google.gson.JsonElement;
@@ -9,6 +13,7 @@ import com.shoeboxscientist.goto10.handlers.AbstractRainbowHatConnector;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.mozilla.javascript.EcmaError;
 
 import java.io.IOException;
 
@@ -20,7 +25,7 @@ import java.io.IOException;
  * used to parse the payload.
  */
 
-public class MessageHandler {
+public class MessageHandler implements AbstractRainbowHatConnector.PeripheralListener {
 
     private AbstractRainbowHatConnector mRainbowHat;
     private ContentStore mStore;
@@ -30,15 +35,21 @@ public class MessageHandler {
     public static final String ATTR_CLASS = "cls";
 
     private static final String TYPE_SAVE = "save";
+    private static final String TYPE_EXECUTE = "execute";
     private static final String TYPE_LOAD = "load";
     private static final String TYPE_CMD = "cmd";
+    private static final String TYPE_LOG = "log";
 
     private NanoHttpdWebSocketServer mSocketServer;
+    private ScriptExecutor mExecutor;
 
-    public MessageHandler(ContentStore store,
-                          AbstractRainbowHatConnector rainbowHat) {
+    public MessageHandler(DataSource source,
+                          ContentStore store,
+                          AbstractRainbowHatConnector rainbowHat,
+                          LoggingOutput log) {
         mRainbowHat = rainbowHat;
         mRainbowHat.setPeripheralListener(this);
+        mExecutor = new ScriptExecutor(source, log, mRainbowHat);
         mStore = store;
     }
 
@@ -51,7 +62,8 @@ public class MessageHandler {
      */
     public void onPeripheralEvent(String cls, JsonObject json)
             throws CommandException, IOException, JSONException {
-        mSocketServer.send(buildCommandPayload(cls, json));
+        mExecutor.onPeripheralEvent(cls, json);
+        mSocketServer.send(buildJSMsg("Event: " + cls + ": " + json));
     }
 
     /**
@@ -74,6 +86,18 @@ public class MessageHandler {
         } else if (TYPE_LOAD.equals(type)) {
             String script = mStore.readscript();
             mSocketServer.send(buildLoadScriptPayload(script));
+        } else if (TYPE_EXECUTE.equals(type)) {
+            String payload = obj.get(ATTR_PAYLOAD).getAsString();
+            System.out.println("Saving and executing script: " + payload);
+            mStore.savescript(payload);
+
+            try {
+                mExecutor.executeScript(payload);
+                mSocketServer.send(buildJSMsg("OK"));
+            } catch (EcmaError e) {
+                e.printStackTrace();
+                mSocketServer.send(buildJSMsg("Error: " + e.getMessage()));
+            }
         } else if (TYPE_CMD.equals(type)) {
             // TODO: Route messages to correct handler based on class.
             JsonObject payload = obj.get(ATTR_PAYLOAD).getAsJsonObject();
@@ -88,7 +112,17 @@ public class MessageHandler {
         return msg;
     }
 
-    private JsonObject buildCommandPayload(String cls, JsonObject payload) {
+    private JsonObject buildJSMsg(String s) {
+        JsonObject msg = new JsonObject();
+        msg.addProperty(ATTR_TYPE, TYPE_LOG);
+        msg.addProperty(ATTR_PAYLOAD, s);
+        return msg;
+    }
+
+    // Deprecated -- this was used when execution was in the browser, now execution is all local
+    // there are no callbacks sent to the browser.
+    @Deprecated
+    private JsonObject XbuildCommandPayload(String cls, JsonObject payload) {
         JsonObject msg = new JsonObject();
         msg.addProperty(ATTR_TYPE, TYPE_CMD);
         msg.addProperty(ATTR_CLASS, cls);

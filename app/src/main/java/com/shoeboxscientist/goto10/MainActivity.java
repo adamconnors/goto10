@@ -7,14 +7,17 @@ import android.os.Bundle;
 import android.util.Log;
 
 import com.google.android.things.contrib.driver.button.Button;
+import com.google.android.things.contrib.driver.ht16k33.AlphanumericDisplay;
 import com.google.android.things.contrib.driver.rainbowhat.RainbowHat;
 import com.shoeboxscientist.goto10.AndroidInstanceClasses.AndroidContentStore;
 import com.shoeboxscientist.goto10.handlers.RainbowHatConnector;
 
 import org.json.JSONException;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -38,7 +41,7 @@ public class MainActivity extends AppCompatActivity {
         // Set up the rainbow hat
         try {
             mRainbowHat = new RainbowHatConnector();
-            mContentStore = new AndroidContentStore();
+            mContentStore = new AndroidContentStore(this);
             mRainbowHat.updateDisplay("REDY");
             mRainbowHat.updateLedStrip(new int[] { Color.BLACK, Color.BLACK, Color.BLACK,
                     Color.BLACK, Color.BLACK, Color.BLACK, Color.BLACK});
@@ -50,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
 
         mSource = new DataSource();
         mLog = new LoggingOutput();
-        mExec = new MessageHandler(mContentStore, mRainbowHat);
+        mExec = new MessageHandler(mSource, mContentStore, mRainbowHat, mLog);
 
         mServer = new NanoHttpWebServer(PORT, mSource, mLog, mExec);
         mSocketServer = new NanoHttpdWebSocketServer(8081, mLog, mExec);
@@ -87,6 +90,25 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public InputStream getInputStreamForPath(String path) throws IOException {
             return getAssets().open("www" + path);
+        }
+
+        @Override
+        public String getStringForPath(String path) throws IOException {
+            InputStream in = null;
+            try {
+                in = getInputStreamForPath(path);
+                BufferedReader r = new BufferedReader(new InputStreamReader(in));
+                String line;
+                StringBuilder b = new StringBuilder();
+                while ( (line = r.readLine()) != null) {
+                    b.append(line);
+                }
+                return b.toString();
+            } finally {
+                if (in != null) {
+                    in.close();
+                }
+            }
         }
     }
 

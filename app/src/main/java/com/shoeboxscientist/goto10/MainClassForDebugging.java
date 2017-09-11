@@ -25,7 +25,7 @@ public class MainClassForDebugging {
         LoggingOutput log = new LoggingOutput();
         TestRainbowHatConnector rh = new TestRainbowHatConnector();
 
-        MessageHandler exec = new MessageHandler(store, rh);
+        MessageHandler exec = new MessageHandler(source, store, rh, log);
 
         // Starts web socket server.
         NanoHttpdWebSocketServer socketServer = new NanoHttpdWebSocketServer(8081, log, exec);
