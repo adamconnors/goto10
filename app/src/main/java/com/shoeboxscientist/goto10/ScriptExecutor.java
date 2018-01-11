@@ -19,7 +19,7 @@ import java.io.IOException;
 public class ScriptExecutor {
 
     private final NanoHttpWebServer.LoggingOutput mLog;
-    private final AbstractRainbowHatConnector mHat;
+    private final JavaContext mJavaContext;
     private final NanoHttpWebServer.DataSource mSource;
 
     private Context mRhino = null;
@@ -28,9 +28,9 @@ public class ScriptExecutor {
 
     public ScriptExecutor(NanoHttpWebServer.DataSource source,
                           NanoHttpWebServer.LoggingOutput log,
-                          AbstractRainbowHatConnector hat) {
+                          JavaContext context) {
         mLog = log;
-        mHat = hat;
+        mJavaContext = context;
         mSource = source;
     }
 
@@ -45,7 +45,8 @@ public class ScriptExecutor {
         Scriptable scope = mRhino.initStandardObjects();
 
         // Adds a global instance of JavaContext to the js runtime.
-        Object context = Context.javaToJS(new JavaContext(mHat, mLog, scope, mRhino), scope);
+        mJavaContext.init(scope, mRhino);
+        Object context = Context.javaToJS(mJavaContext, scope);
         ScriptableObject.putProperty(scope, "thing", context);
 
         // Execute server js.
@@ -58,6 +59,7 @@ public class ScriptExecutor {
 
         // Execute client js definitions.
         Object result = mRhino.evaluateString(scope, script, "<cmd>", 1, null);
+        Context.exit();
         System.out.println("Execution finished.");
     }
 

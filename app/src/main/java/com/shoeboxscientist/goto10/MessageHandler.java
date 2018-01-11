@@ -10,6 +10,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.shoeboxscientist.goto10.handlers.AbstractRainbowHatConnector;
+import com.shoeboxscientist.goto10.javascript.JavaContext;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -49,7 +50,9 @@ public class MessageHandler implements AbstractRainbowHatConnector.PeripheralLis
                           LoggingOutput log) {
         mRainbowHat = rainbowHat;
         mRainbowHat.setPeripheralListener(this);
-        mExecutor = new ScriptExecutor(source, log, mRainbowHat);
+
+        JavaContext ctx = new JavaContext(mRainbowHat, log);
+        mExecutor = new ScriptExecutor(source, log, ctx);
         mStore = store;
     }
 
@@ -97,6 +100,9 @@ public class MessageHandler implements AbstractRainbowHatConnector.PeripheralLis
             } catch (EcmaError e) {
                 e.printStackTrace();
                 mSocketServer.send(buildJSMsg("Error: " + e.getMessage()));
+            } catch (RuntimeException e2) {
+                e2.printStackTrace();
+                mSocketServer.send(buildJSMsg("Error: " + e2.getMessage()));
             }
         } else if (TYPE_CMD.equals(type)) {
             // TODO: Route messages to correct handler based on class.
